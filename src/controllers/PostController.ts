@@ -5,28 +5,52 @@ import { Context } from "hono";
 import prisma from "../../prisma/client";
 
 /**
- * Getting all posts
+ * Getting all posts with pagination
  */
 export const getPosts = async (c: Context) => {
   try {
-    //get all posts
-    const posts = await prisma.post.findMany({ orderBy: { id: "desc" } });
+    // Get pagination parameters from the query string or set defaults
+    const page = parseInt(c.req.query("page") || "1", 10);
+    const perPage = parseInt(c.req.query("perpage") || "10", 10);
 
-    //get total posts
+    // Calculate the offset and limit
+    const offset = (page - 1) * perPage;
+    const limit = perPage;
+
+    // Get paginated posts
+    const posts = await prisma.post.findMany({
+      orderBy: { id: "desc" },
+      take: Number(limit),
+      skip: Number(offset),
+    });
+
+    // Get total posts
     const totalPosts = await prisma.post.count();
 
-    //return JSON
+    // Calculate total pages
+    const totalPages = Math.ceil(totalPosts / perPage);
+
+    // Return JSON
     return c.json(
       {
         success: true,
         message: "List Data Posts!",
         total_items: totalPosts,
+        total_pages: totalPages,
+        current_page: page,
         data: posts,
       },
       200
     );
   } catch (e: unknown) {
     console.error(`Error getting posts: ${e}`);
+    return c.json(
+      {
+        success: false,
+        message: "Error getting posts",
+      },
+      500
+    );
   }
 };
 
