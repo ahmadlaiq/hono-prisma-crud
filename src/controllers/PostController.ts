@@ -5,13 +5,16 @@ import { Context } from "hono";
 import prisma from "../../prisma/client";
 
 /**
- * Getting all posts with pagination
+ * Getting all posts with pagination and search
  */
 export const getPosts = async (c: Context) => {
   try {
     // Get pagination parameters from the query string or set defaults
     const page = parseInt(c.req.query("page") || "1", 10);
     const perPage = parseInt(c.req.query("perpage") || "10", 10);
+
+    // Get search query from the query string
+    const search = c.req.query("q") || "";
 
     // Calculate the offset and limit
     const offset = (page - 1) * perPage;
@@ -20,6 +23,20 @@ export const getPosts = async (c: Context) => {
     // Get paginated posts
     const posts = await prisma.post.findMany({
       orderBy: { id: "desc" },
+      where: {
+        OR: [
+          {
+            title: {
+              contains: String(search),
+            },
+          },
+          {
+            content: {
+              contains: String(search),
+            },
+          },
+        ],
+      },
       take: Number(limit),
       skip: Number(offset),
     });
